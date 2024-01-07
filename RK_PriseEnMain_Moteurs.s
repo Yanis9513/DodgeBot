@@ -92,11 +92,10 @@ __main
 		nop	   
 		nop	   									;; pas necessaire en simu ou en debbug step by step...
 	
-	
 		;^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^CONFIGURATION LED
 
         ldr r6, = GPIO_PORTF_BASE+GPIO_O_DIR    ;; 1 Pin du portF en sortie (broche 4 : 00010000)
-        ldr r0, = BROCHE4_5 	
+        ldr r0, = BROCHE4_5
         str r0, [r6]
 		
 		ldr r6, = GPIO_PORTF_BASE+GPIO_O_DEN	;; Enable Digital Function 
