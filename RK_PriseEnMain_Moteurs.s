@@ -144,10 +144,6 @@ __main
 		;vvvvvvvvvvvvvvvvvvvvvvvFin configuration bumper 
 		
 		BL	MOTEUR_INIT	
-
-Moteur_Off
-		BL MOTEUR_DROIT_OFF
-		BL MOTEUR_GAUCHE_OFF
 		
 ReadState_Launch
 		mov r12, #0x00
@@ -278,6 +274,15 @@ ReadState_Stop
 
 Affichage
 		;affiche le nombre d'obstacle et repart au début
+		BL MOTEUR_DROIT_OFF
+		BL MOTEUR_GAUCHE_OFF
+		str r2, [r8] ;eteindre led1 et led2
+		
+		;affiche le nombre d'obstacle
+		
+		
+		;renvoi vers le début
+		BL	ReadState_Launch
 		
 		
 		NOP
