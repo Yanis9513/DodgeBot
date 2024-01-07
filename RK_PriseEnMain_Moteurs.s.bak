@@ -54,9 +54,6 @@ DUREE   			EQU     0x0005FFFF
 	
 ; turn frequency
 DUREE_TURN   		EQU     0x015FFFFF
-
-; Dodge frequency
-DUREE_DODGE			EQU		0x015FFFFF
 			
 			
 		ENTRY
@@ -109,6 +106,7 @@ __main
 		
 		mov r2, #0x000       					;; pour eteindre LED
      
+		; allumer la led broche 4 (BROCHE4_5)
 		mov r3, #BROCHE4_5		;; Allume LED1&2 portF broche 4&5 : 00110000
 		
 		ldr r8, = GPIO_PORTF_BASE + (BROCHE4_5<<2)  ;; @data Register = @base + (mask<<2) ==> LED1
@@ -128,10 +126,7 @@ __main
 		ldr r7, = GPIO_PORTD_BASE + (BROCHE6_7<<2)  ;; @data Register = @base + (mask<<2) ==> Switcher
 		
 		
-		;vvvvvvvvvvvvvvvvvvvvvvvFin configuration switch 1 & 2
-		
-		
-		;^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^CONFIGURATION bumper 1 & 2
+		;vvvvvvvvvvvvvvvvvvvvvvvFin configuration Bumper 1 & 2
 		
 		ldr r6, = GPIO_PORTE_BASE+GPIO_I_PUR	;; Pul_up 
         ldr r0, = BROCHE0_1	
@@ -142,7 +137,7 @@ __main
         str r0, [r6]     
 		
 		ldr r9, = GPIO_PORTE_BASE + (BROCHE0_1<<2)  ;; @data Register = @base + (mask<<2) ==> Bumper
-		;vvvvvvvvvvvvvvvvvvvvvvvFin configuration bumper 
+		;vvvvvvvvvvvvvvvvvvvvvvvFin configuration Switcher 
 		
 		BL	MOTEUR_INIT	
 
@@ -151,12 +146,40 @@ Moteur_Off
 		BL MOTEUR_GAUCHE_OFF
 		
 ReadState_Launch
-		mov r12, #0x00
 		ldr r10,[r7]
 		CMP r10,#0x80
 		str r2, [r8]
-		BNE ReadState_Launch      		
+		BNE ReadState_Launch      
+		
+		;r0 r1 r6 used
+		
 		str r3,[r8] 
+
+Mode_Direction
+		ldr r4,[r9]
+		CMP r4,#0x02
+		BEQ	Mode_Right
+
+		ldr r4,[r9]
+		CMP r4,#0x01
+		BEQ	Mode_Left
+		
+		BL 	Mode_Direction
+	
+Mode_Right
+		mov r12, #0x01
+		ldr r5, = 0x000FFFFF
+		str r2,[r8] 
+		BL 	timer
+
+Mode_Left
+		mov r12, #0x02
+		ldr r5, = 0x000FFFFF
+		str r2,[r8] 
+timer
+		
+		subs r5, #1
+        bne timer
 		
 loop	
 		; Activer les deux moteurs droit et gauche
@@ -167,119 +190,62 @@ loop
 		BL	MOTEUR_DROIT_AVANT	   
 		BL	MOTEUR_GAUCHE_AVANT
 		
-		ldr r4,[r9]
-				
 		BL	BumperState
-		
-		BL  BumperState_Both
-		
 		BL	ReadState_Stop
 		
 		str r2, [r8] ;eteindre led1 et led2
 		ldr r11, = DUREE 		
 		
 wait	
-		;éteins les deux leds pendant DUREE puis l'allume après DUREE
 		BL	BumperState
-		BL 	BumperState_Both
-		
 		subs r11, #1
 		BNE wait
 		
 		str r3, [r8]  							;; Allume LED1&2 portF broche 4&5 : 00110000 (contenu de r3)
         ldr r11, = DUREE						;; pour la duree de la boucle d'attente (wait1)
-		
 wait1	
-		;allume les deux leds pendant DUREE puis l'allume après DUREE
 		BL	BumperState
-		BL 	BumperState_Both
-		
 		subs r11, #1
 		BNE wait1
 		
 		b	loop
 
 BumperState
-		;compare avec le bumper de droite
+		;compare with left bumper 1
+		ldr r4,[r9]
 		CMP r4,#0x01
-		BEQ Turn_Left
-		
-		;compare avec le bumper de gauche
+		BEQ Turn
 		CMP r4, #0x02
-		BEQ Turn_Right
+		BEQ Turn
 		BX	LR
-
+		
+Turn
+		CMP r12,#0x01
+		BEQ	Turn_Right
+		BL	Turn_Left
+		
 Turn_Right
-		;tourne à droite puis va tout droit
-		ADD r12, r12, #1
 		BL 	MOTEUR_GAUCHE_ARRIERE
 		ldr r5, = DUREE_TURN
 		str r3, [r8] 
 		BL	wait_turn
-		mov	r4,#0x01
-		BL	Go_Straight
-
-
+	
 Turn_Left
-		;tourne à gauche puis va tout droit
-		ADD r12, r12, #1
 		BL 	MOTEUR_DROIT_ARRIERE
 		ldr r5, = DUREE_TURN
 		str r3, [r8] 
 		BL	wait_turn
-		mov	r4,#0x02
-		BL	Go_Straight
-		
-Go_Straight
-		;Avance tout droit et tourne dans la direction opposés d'avant
-		BL	MOTEUR_DROIT_AVANT	   
-		BL	MOTEUR_GAUCHE_AVANT
-		ldr r5, = DUREE_DODGE
-		str r3, [r8] 
-		BL	wait_turn
-		
-		CMP	r4, #0x01
-		BEQ	Left_One
-		
-		CMP	r4, #0x02
-		BEQ	Right_One
 
-Left_One
-		;tourne à gauche une seule fois
-		BL 	MOTEUR_DROIT_ARRIERE
-		ldr r5, = DUREE_TURN
-		BL	wait_turn
-		b 	loop
-		
-Right_One
-		;tourne à droite une seule fois
-		BL 	MOTEUR_GAUCHE_ARRIERE
-		ldr r5, = DUREE_TURN
-		BL	wait_turn
-		b	loop
-		
 wait_turn
-		;attends une certaines durée
 		subs r5, #1
 		BNE wait_turn
-		BX	LR
+		b loop
 
-BumperState_Both
-		;compare avec les deux bumpers et renvoi vers l'affichage
-		CMP r4, #0x00
-		BEQ	Affichage
-		BX	LR
-		
 ReadState_Stop
-		;pour envoyer vers l'affiche en cas de clique sur le bouton
 		ldr r10,[r7]
 		CMP r10,#0x40
-		BEQ	Affichage
+		BEQ	Moteur_Off
 		BX	LR 
-
-Affichage
-		;affiche le nombre d'obstacle et repart au début
-		
 		
 		NOP
         END
