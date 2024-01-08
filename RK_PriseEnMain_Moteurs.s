@@ -35,6 +35,10 @@ GPIO_I_PUR   		EQU 	0x00000510  ; GPIO Pull-Up (p432 datasheet de lm3s9B92.pdf)
 ; Broches select
 BROCHE4_5			EQU		0x30		; led1 & led2 sur broche 4 et 5
 
+BROCHE4				EQU		0x10		; led1 sur broche 4
+
+BROCHE5				EQU		0x20		; led1 sur broche 5
+
 BROCHE6				EQU 	0x40		; bouton poussoir 1
 	
 BROCHE7				EQU		0x80		; bouton poussoir 2
@@ -58,7 +62,9 @@ DUREE_TURN   		EQU     0x015FFFFF
 ; Dodge frequency
 DUREE_DODGE			EQU		0x015FFFFF
 			
-			
+; Show frequency
+DUREE_DISPLAY		EQU		0x004FFFFF
+
 		ENTRY
 		EXPORT	__main    
 		
@@ -92,10 +98,11 @@ __main
 		nop	   
 		nop	   									;; pas necessaire en simu ou en debbug step by step...
 	
+	
 		;^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^CONFIGURATION LED
 
         ldr r6, = GPIO_PORTF_BASE+GPIO_O_DIR    ;; 1 Pin du portF en sortie (broche 4 : 00010000)
-        ldr r0, = BROCHE4_5
+        ldr r0, = BROCHE4_5 	
         str r0, [r6]
 		
 		ldr r6, = GPIO_PORTF_BASE+GPIO_O_DEN	;; Enable Digital Function 
@@ -144,6 +151,10 @@ __main
 		;vvvvvvvvvvvvvvvvvvvvvvvFin configuration bumper 
 		
 		BL	MOTEUR_INIT	
+
+Moteur_Off
+		BL MOTEUR_DROIT_OFF
+		BL MOTEUR_GAUCHE_OFF
 		
 ReadState_Launch
 		mov r12, #0x00
@@ -262,28 +273,61 @@ wait_turn
 BumperState_Both
 		;compare avec les deux bumpers et renvoi vers l'affichage
 		CMP r4, #0x00
-		BEQ	Affichage
+		BEQ	Display
 		BX	LR
 		
 ReadState_Stop
 		;pour envoyer vers l'affiche en cas de clique sur le bouton
 		ldr r10,[r7]
 		CMP r10,#0x40
-		BEQ	Affichage
+		BEQ	Display
 		BX	LR 
 
-Affichage
-		;affiche le nombre d'obstacle et repart au début
+; Affiche le nombre d'obstacles (clignotement) stocké dans r12
+Display
+		; éteint les leds
+		str r2, [r8]
+		
+		; éteint les moteurs
 		BL MOTEUR_DROIT_OFF
 		BL MOTEUR_GAUCHE_OFF
-		str r2, [r8] ;eteindre led1 et led2
 		
-		;affiche le nombre d'obstacle
+		; Charge la durée de clignotement
+		ldr r10, =DUREE_DISPLAY
+		ldr r11, =DUREE_DISPLAY
+		ldr r1, = GPIO_PORTF_BASE + (BROCHE4<<2) ; pour clignoter une seule led
 		
-		
-		;renvoi vers le début
-		BL	ReadState_Launch
-		
+		; Loop pour afficher chaque obstacle
+		BL Blink_Leds
+
+		; Reset le nombre d'obstacle en mettant r12 à 0
+		mov r12, #0x00
+		b	Moteur_Off
+
+; Clignote la led en fonction du nombre d'obstacles
+Blink_Leds
+		CMP r12, #0x00     ; Vérifie si il n y'a plus d'obstacles
+		BEQ ReadState_Launch     ; Si 0 repart au début
+
+		; Leds On
+		str r3, [r1]       ; Allume la led
+		BL Wait_Blink      ; Attend une durée
+
+		; Leds Off
+		mov r2, #Led_Off   ; éteint la led
+		str r2, [r1]
+		BL Wait_Blink      ; Attend une durée
+
+		; Décrémente le nombre d'obstacle à afficher
+		subs r12, #1
+		B Blink_Leds
+
+; Attend une durée
+Wait_Blink
+		subs r10, #1
+		BNE Wait_Blink
+		mov r10, r11 
+		BX LR
 		
 		NOP
         END
