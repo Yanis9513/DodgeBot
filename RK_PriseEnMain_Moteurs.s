@@ -6,7 +6,7 @@
 		AREA    |.text|, CODE, READONLY
 		
 ; This register controls the clock gating logic in normal Run mode
-SYSCTL_PERIPH_GPIO EQU		0x400FE108	; SYSCTL_RCGC2_R (p291 datasheet de lm3s9b92.pdf)
+SYSCTL_PERIPH_GPIO 	EQU		0x400FE108	; SYSCTL_RCGC2_R (p291 datasheet de lm3s9b92.pdf)
 
 ; The GPIODATA register is the data register
 GPIO_PORTF_BASE		EQU		0x40025000	; GPIO Port F (APB) base: 0x4002.5000 (p416 datasheet de lm3s9B92.pdf)
@@ -50,9 +50,7 @@ BROCHE0				EQU		0x01		;bumper 1
 BROCHE1				EQU 	0x02		;bumper 2
 	
 BROCHE0_1			EQU  	0x03		;bumper 1 et 2
-	
-Led_Off				EQU		0x00		;pour eteindre une led 
-	
+		
 DUREE   			EQU     0x0005FFFF	; blinking frequency
 	
 DUREE_TURN   		EQU     0x015FFFFF	; turn frequency
@@ -97,7 +95,7 @@ __main
 	
 		;^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^CONFIGURATION LED
 
-        ldr r6, = GPIO_PORTF_BASE+GPIO_O_DIR    ;; 1 Pin du portF en sortie (broche 4 : 00010000)
+        ldr r6, = GPIO_PORTF_BASE+GPIO_O_DIR    ;; Pin du portF en sortie (broche 4&5 : 00110000)
         ldr r0, = BROCHE4_5 	
         str r0, [r6]
 		
@@ -113,7 +111,7 @@ __main
      
 		mov r3, #BROCHE4_5						;; Allume LED1&2 portF broche 4&5 : 00110000
 		
-		ldr r8, = GPIO_PORTF_BASE + (BROCHE4_5<<2)  ;; @data Register = @base + (mask<<2) ==> LED1
+		ldr r8, = GPIO_PORTF_BASE + (BROCHE4_5<<2)  ;; @data Register = @base + (mask<<2) ==> LED1 & 2
 		;vvvvvvvvvvvvvvvvvvvvvvvFin configuration LED 
 
 
@@ -319,28 +317,24 @@ Blink_Leds
 		CMP r12, #0x00     ; Vérifie si il n y'a plus d'obstacles
 		BEQ ReadState_Launch     ; Si 0 repart au début
 		
+		; charge la durée
 		ldr r5, = DUREE_DISPLAY
+		
 		; Leds On
 		str r3, [r1]       ; Allume la led
 		BL wait_turn      ; Attend une durée
 		
+		; charge la durée
 		ldr r5, = DUREE_DISPLAY
+		
 		; Leds Off
-		mov r2, #Led_Off   ; éteint la led
 		str r2, [r1]
 		BL wait_turn      ; Attend une durée
-		
 
 		; Décrémente le nombre d'obstacle à afficher
 		subs r12, #1
 		B Blink_Leds
 
-; Attend une durée
-Wait_Blink
-		subs r10, #1
-		BNE Wait_Blink
-		mov r10, r11 
-		BX LR
 		
 		NOP
         END
