@@ -53,17 +53,17 @@ BROCHE0_1			EQU  	0x03		;bumper 1 et 2
 	
 Led_Off				EQU		0x00		;pour eteindre une led 
 	
-; blinking frequency
-DUREE   			EQU     0x0005FFFF
-	
-; turn frequency
-DUREE_TURN   		EQU     0x015FFFFF
 
-; Dodge frequency
-DUREE_DODGE			EQU		0x015FFFFF
+DUREE   			EQU     0x0005FFFF	; blinking frequency
+
+DUREE_TURN   		EQU     0x015FFFFF	; turn frequency
+
+DUREE_DODGE			EQU		0x015FFFFF	; Dodge frequency
 			
-; Show frequency
-DUREE_DISPLAY		EQU		0x004FFFFF
+DUREE_DISPLAY		EQU		0x004FFFFF	; Show frequency
+	
+DUREE_BACK			EQU		0x003FFFFF	; Back frequency
+
 
 		ENTRY
 		EXPORT	__main    
