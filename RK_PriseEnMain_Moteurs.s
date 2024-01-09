@@ -53,17 +53,15 @@ BROCHE0_1			EQU  	0x03		;bumper 1 et 2
 	
 Led_Off				EQU		0x00		;pour eteindre une led 
 	
-; blinking frequency
-DUREE   			EQU     0x0005FFFF
+DUREE   			EQU     0x0005FFFF	; blinking frequency
 	
-; turn frequency
-DUREE_TURN   		EQU     0x015FFFFF
+DUREE_TURN   		EQU     0x015FFFFF	; turn frequency
 
-; Dodge frequency
-DUREE_DODGE			EQU		0x015FFFFF
+DUREE_DODGE			EQU		0x015FFFFF	; Dodge frequency
 			
-; Show frequency
-DUREE_DISPLAY		EQU		0x004FFFFF
+DUREE_DISPLAY		EQU		0x004FFFFF	; Show frequency
+	
+DUREE_BACK			EQU		0x005FFFFF	; Back frequency
 
 		ENTRY
 		EXPORT	__main    
@@ -216,8 +214,15 @@ BumperState
 		BX	LR
 
 Turn_Right
-		;tourne à droite puis va tout droit
+		; Recule et ensuite fait une rotation à droite
+		BL	MOTEUR_DROIT_ARRIERE
+		BL 	MOTEUR_GAUCHE_ARRIERE
+		ldr r5, = DUREE_BACK
+		BL	wait_turn
+		
+		; Tourne à droite puis va tout droit
 		ADD r12, r12, #1
+		BL	MOTEUR_DROIT_AVANT
 		BL 	MOTEUR_GAUCHE_ARRIERE
 		ldr r5, = DUREE_TURN
 		str r3, [r8] 
@@ -227,12 +232,19 @@ Turn_Right
 
 
 Turn_Left
-		;tourne à gauche puis va tout droit
+		; Recule et ensuite fait une rotation à gauche
+		BL	MOTEUR_DROIT_ARRIERE
+		BL 	MOTEUR_GAUCHE_ARRIERE
+		ldr r5, = DUREE_BACK
+		BL	wait_turn
+		
+		; Tourne à gauche puis va tout droit
 		ADD r12, r12, #1
+		BL 	MOTEUR_GAUCHE_AVANT
 		BL 	MOTEUR_DROIT_ARRIERE
 		ldr r5, = DUREE_TURN
 		str r3, [r8] 
-		BL	wait_turn
+		
 		mov	r4,#0x02
 		BL	Go_Straight
 		
