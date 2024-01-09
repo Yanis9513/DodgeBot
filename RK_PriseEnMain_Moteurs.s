@@ -84,11 +84,9 @@ DUREE_BACK			EQU		0x005FFFFF	; Back frequency
 
 __main	
 
-		; ;; Enable the Port F & D peripheral clock 		(p291 datasheet de lm3s9B96.pdf)
-		; ;;									
+		; ;; Enable the Port F & E & D peripheral clock 		(p291 datasheet de lm3s9B96.pdf)
 		ldr r6, = SYSCTL_PERIPH_GPIO  			;; RCGC2
-        mov r0, #0x00000038  					;; Enable clock sur GPIO D et F où sont branchés les leds (0x28 == 0b101000)
-		; ;;														 									      (GPIO::FEDCBA)
+        mov r0, #0x00000038  					;; Enable clock sur GPIO D ,E et F (0x38 == 0b111000)
         str r0, [r6]
 		
 		; ;; "There must be a delay of 3 system clocks before any GPIO reg. access  (p413 datasheet de lm3s9B92.pdf)
@@ -113,7 +111,7 @@ __main
 		
 		mov r2, #0x000       					;; pour eteindre LED
      
-		mov r3, #BROCHE4_5		;; Allume LED1&2 portF broche 4&5 : 00110000
+		mov r3, #BROCHE4_5						;; Allume LED1&2 portF broche 4&5 : 00110000
 		
 		ldr r8, = GPIO_PORTF_BASE + (BROCHE4_5<<2)  ;; @data Register = @base + (mask<<2) ==> LED1
 		;vvvvvvvvvvvvvvvvvvvvvvvFin configuration LED 
@@ -186,17 +184,19 @@ wait
 		;éteins les deux leds pendant DUREE puis l'allume après DUREE
 		BL	BumperState
 		BL 	BumperState_Both
+		BL	ReadState_Stop
 		
 		subs r11, #1
 		BNE wait
 		
-		str r3, [r8]  							;; Allume LED1&2 portF broche 4&5 : 00110000 (contenu de r3)
-        ldr r11, = DUREE						;; pour la duree de la boucle d'attente (wait1)
+		str r3, [r8]  				;; Allume LED1&2 portF broche 4&5 : 00110000 (contenu de r3)
+        ldr r11, = DUREE			;; pour la duree de la boucle d'attente (wait1)
 		
 wait1	
 		;allume les deux leds pendant DUREE puis l'allume après DUREE
 		BL	BumperState
 		BL 	BumperState_Both
+		BL	ReadState_Stop
 		
 		subs r11, #1
 		BNE wait1
@@ -222,8 +222,8 @@ Turn_Right
 		
 		; Tourne à droite puis va tout droit
 		ADD r12, r12, #1
-		BL	MOTEUR_DROIT_AVANT
 		BL 	MOTEUR_GAUCHE_ARRIERE
+		BL	MOTEUR_DROIT_AVANT
 		ldr r5, = DUREE_TURN
 		str r3, [r8] 
 		BL	wait_turn
@@ -240,8 +240,8 @@ Turn_Left
 		
 		; Tourne à gauche puis va tout droit
 		ADD r12, r12, #1
-		BL 	MOTEUR_GAUCHE_AVANT
 		BL 	MOTEUR_DROIT_ARRIERE
+		BL 	MOTEUR_GAUCHE_AVANT
 		ldr r5, = DUREE_TURN
 		str r3, [r8] 
 		
@@ -258,7 +258,7 @@ Go_Straight
 		
 		CMP	r4, #0x01
 		BEQ	Left_One
-		
+			
 		CMP	r4, #0x02
 		BEQ	Right_One
 
@@ -304,9 +304,7 @@ Display
 		BL MOTEUR_DROIT_OFF
 		BL MOTEUR_GAUCHE_OFF
 		
-		; Charge la durée de clignotement
-		ldr r10, =DUREE_DISPLAY
-		ldr r11, =DUREE_DISPLAY
+		; Charge la led 1
 		ldr r1, = GPIO_PORTF_BASE + (BROCHE4<<2) ; pour clignoter une seule led
 		
 		; Loop pour afficher chaque obstacle
@@ -320,15 +318,18 @@ Display
 Blink_Leds
 		CMP r12, #0x00     ; Vérifie si il n y'a plus d'obstacles
 		BEQ ReadState_Launch     ; Si 0 repart au début
-
+		
+		ldr r5, = DUREE_DISPLAY
 		; Leds On
 		str r3, [r1]       ; Allume la led
-		BL Wait_Blink      ; Attend une durée
-
+		BL wait_turn      ; Attend une durée
+		
+		ldr r5, = DUREE_DISPLAY
 		; Leds Off
 		mov r2, #Led_Off   ; éteint la led
 		str r2, [r1]
-		BL Wait_Blink      ; Attend une durée
+		BL wait_turn      ; Attend une durée
+		
 
 		; Décrémente le nombre d'obstacle à afficher
 		subs r12, #1
